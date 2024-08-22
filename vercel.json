@@ -2,14 +2,26 @@
     "version": 2,
     "builds": [
       {
-        "src": "index.js",
+        "src": "server.js",
         "use": "@vercel/node"
       }
     ],
     "routes": [
       {
+        "src": "/api/collection/([^/]+)/items",
+        "dest": "server.js"
+      },
+      {
+        "src": "/api/collections/items",
+        "dest": "server.js"
+      },
+      {
+        "src": "/api/send-emails",
+        "dest": "server.js"
+      },
+      {
         "src": "/(.*)",
-        "dest": "index.js"
+        "dest": "server.js"
       }
     ]
   }
