@@ -9,7 +9,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL
+}));
 app.use(express.json()); 
 // Route to handle requests for a single collection
 app.get('/api/collection/:id/items', async (req, res) => {
@@ -134,3 +136,5 @@ app.post('/api/send-emails', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Proxy server is running on http://localhost:${PORT}`);
 });
+
+module.exports = app;
