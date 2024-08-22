@@ -1,57 +1,28 @@
-const axios = require('axios');
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
-module.exports = async (req, res) => {
-  const { method, query, body } = req;
+export default async function handler(req, res) {
+  const { method, body } = req;
 
-  if (method === 'GET' && query.id) {
-    // Handle /api/collection/:id/items
-    const collectionId = query.id;
-
-    try {
-      const response = await axios.get(`https://api.webflow.com/collections/${collectionId}/items`, {
-        headers: {
-          Authorization: `Bearer ${process.env.WEBFLOW_API_KEY}`,
-          'Accept-Version': '1.0.0',
-        },
-      });
-
-      res.status(200).json(response.data);
-    } catch (error) {
-      res.status(error.response?.status || 500).send(error.message);
-    }
-  } else if (method === 'GET' && query.id1 && query.id2 && query.id3) {
-    // Handle /api/collections/items
-    const collectionIds = [query.id1, query.id2, query.id3];
-
-    try {
-      const results = await Promise.all(
-        collectionIds.map(async (id) => {
-          const response = await axios.get(`https://api.webflow.com/collections/${id}/items`, {
-            headers: {
-              Authorization: `Bearer ${process.env.WEBFLOW_API_KEY}`,
-              'Accept-Version': '1.0.0',
-            },
-          });
-          return { collectionId: id, items: response.data };
-        })
-      );
-      res.status(200).json(results);
-    } catch (error) {
-      res.status(error.response?.status || 500).send(error.message);
-    }
-  } else if (method === 'POST') {
-    // Handle /api/send-emails
+  if (method === 'POST') {
     const { clientEmail, adminEmail, clientName, clientPhone, venue, orderSummary } = body;
 
     let transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
-      secure: false,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+    });
+
+    // Verify the transporter
+    transporter.verify(function (error, success) {
+      if (error) {
+        console.error('SMTP connection error:', error);
+      } else {
+        console.log("Server is ready to take our messages");
+      }
     });
 
     let clientMailOptions = {
@@ -100,9 +71,10 @@ module.exports = async (req, res) => {
       await transporter.sendMail(adminMailOptions);
       res.status(200).json({ success: true, message: 'Emails sent successfully' });
     } catch (error) {
+      console.error('Error sending emails:', error);
       res.status(500).json({ success: false, message: 'Error sending emails', error: error.message });
     }
   } else {
     res.status(404).send('Not Found');
   }
-};
+}
