@@ -4,15 +4,52 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const nodemailer = require('nodemailer');
 
+
+app.use(cors({
+  origin: 'https://webitflow.com',  // or your actual origin
+  credentials: true
+}));
+
+fetch(url, {
+  credentials: 'include'
+})
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL
-}));
-app.use(express.json()); 
+// CORS configuration
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://webitflow.com'
+    : ['http://localhost:3000', 'http://localhost:3001', 'https://webitflow.com'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Version'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+app.use(express.json());
+
+app.options('*', (req, res) => {
+  res.sendStatus(200);
+});
+
+// Middleware to log requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Test route for CORS
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'CORS is working' });
+});
+
 // Route to handle requests for a single collection
 app.get('/api/collection/:id/items', async (req, res) => {
   const collectionId = req.params.id;
@@ -28,7 +65,9 @@ app.get('/api/collection/:id/items', async (req, res) => {
     console.log('API response data:', response.data.items);
     res.json(response.data);
   } catch (error) {
-    res.status(error.response.status).send(error.message);
+    console.error('Error fetching collection items:', error);
+    console.error('Error response:', error.response?.data);
+    res.status(error.response?.status || 500).json({ error: error.message, details: error.response?.data });
   }
 });
 
@@ -50,13 +89,12 @@ app.get('/api/collections/items', async (req, res) => {
     );
     res.json(results);
   } catch (error) {
-    res.status(error.response.status).send(error.message);
+    console.error('Error fetching multiple collections:', error);
+    res.status(error.response?.status || 500).json({ error: error.message });
   }
 });
 
-
-
-// New route for sending emails
+// Route for sending emails
 app.post('/api/send-emails', async (req, res) => {
   const { clientEmail, adminEmail, clientName, clientPhone, venue, orderSummary } = req.body;
 
@@ -131,6 +169,12 @@ app.post('/api/send-emails', async (req, res) => {
     console.error('Error sending emails:', error);
     res.status(500).json({ success: false, message: 'Error sending emails', error: error.message });
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
 app.listen(PORT, () => {
